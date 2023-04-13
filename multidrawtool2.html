@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="zh-tw">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>批量編輯圖片 - By Aidec</title>
+    <style>
+        /* .preview-canvas {
+            border: 1px solid #000;
+            position: absolute;
+            pointer-events: none;
+            z-index: 999;
+        } */
+
+        /* .work-canvas {
+            position: relative;
+            float: left;
+        } */
+        body {
+            overflow: hidden;
+
+        }
+
+        #canvas-draw-container {
+            overflow: auto;
+            max-height: 86vh;
+
+        }
+
+        #canvas-container {
+            position: relative;
+        }
+
+        .brush-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+
+<body>
+    <input type="file" id="file-input" multiple accept=".jpg, .jpeg, .png">
+
+    <button id="reset">重置所有繪製內容</button>
+    <button id="brush">筆刷模式</button>
+    <button id="eraser">橡皮擦模式</button>
+    <button id="download">匯出保存</button>
+    <select id="brush-style">
+        <option value="round">圓形</option>
+        <option value="square">正方形</option>
+        <option value="butt">矩形</option>
+        <option value="ellipse" style="display:none;">橢圓</option>
+    </select>
+    <div style="
+    display: inline-block;
+">
+        <input type="color" id="color-picker" value="#f9c2a6">
+        <input type="range" id="brush-size" min="1" step="1" max="40" value="5">
+    </div>
+    <div id="canvas-container">
+        <div id="canvas-link-container"></div>
+        <div id="canvas-draw-container"></div>
+    </div>
+</body>
+<script>
+    const fileInput = document.getElementById('file-input');
+    const canvasContainer = document.getElementById('canvas-container');
+    const canvasLinkContainer = document.getElementById('canvas-link-container');
+    const canvasDrawContainer = document.getElementById('canvas-draw-container');
+    //const maxWidth = 500;
+    //const maxHeight = 500;
+    let isDrawing = false;
+    let canvasCounter = 0;
+    let imageObj, initialImageObj;
+    const undoButton = document.getElementById('undo');
+    const downloadButton = document.getElementById('download');
+    //let zip;
+    const btncontainer = document.createElement('div');
+
+
+
+    fileInput.addEventListener('change', () => {
+        const files = fileInput.files;
+
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const reader = new FileReader();
+
+            // 獲取原始檔名
+            const originalFileName = file.name;
+            // 2. 为每个图像创建一个按钮
+
+            const imageButton = document.createElement('button');
+            imageButton.textContent = `顯示圖片${i + 1}`;
+            btncontainer.appendChild(imageButton);
+            canvasLinkContainer.appendChild(btncontainer);
+
+            reader.addEventListener('load', () => {
+                const img = new Image();
+                img.src = reader.result;
+                img.onload = () => {
+                    initialImageObj = img;
+                    let width = img.width;
+                    let height = img.height;
+
+                    // if (width > maxWidth) {
+                    //     height *= maxWidth / width;
+                    //     width = maxWidth;
+                    // }
+
+                    // if (height > maxHeight) {
+                    //     width *= maxHeight / height;
+                    //     height = maxHeight;
+                    // }
+                    //底圖canvas
+                    const backgroundCanvas = document.createElement('canvas');
+                    //筆刷canvas
+                    const brushCanvas = document.createElement('canvas');
+
+                    //
+                    backgroundCanvas.width = width;
+                    backgroundCanvas.height = height;
+                    backgroundCanvas.id = `canvas-${canvasCounter}`;
+                    // 添加原始檔名
+                    backgroundCanvas.setAttribute('data-filename', originalFileName);
+                    //
+                    brushCanvas.width = width;
+                    brushCanvas.height = height;
+                    brushCanvas.id = `brush-canvas-${canvasCounter}`;
+                    brushCanvas.className = 'brush-canvas';
+                    //產生縮放畫布input
+                    const zoomDiv = document.createElement('div');
+                    const zoomRange = document.createElement('input');
+                    zoomRange.setAttribute('type', 'range');
+                    zoomRange.setAttribute('min', '1');
+                    zoomRange.setAttribute('max', '3');
+                    zoomRange.setAttribute('step', '0.01');
+                    zoomRange.setAttribute('value', '1');
+                    // 預設顯示第一張圖的縮放畫布
+                    if (i !== 0) {
+                        zoomRange.style.display = 'none';
+                    }
+                    zoomDiv.appendChild(zoomRange);
+
+
+                    //按鈕點擊事件
+                    imageButton.addEventListener('click', () => {
+                        // 4.顯示當前圖片，隱藏其他圖片
+                        const allContainers = canvasDrawContainer.querySelectorAll('.subcontainer');
+                        //所有的range
+                        const allZoomRanges = canvasContainer.querySelectorAll('input[type="range"]');
+
+                        for (const containerTmp of allContainers) {
+                            containerTmp.style.display = 'none';
+                        }
+                        container.style.display = 'inline-block';
+                        //隱藏
+                        for (const otherZoomRange of allZoomRanges) {
+                            otherZoomRange.style.display = 'none';
+                        }
+                        //顯示目前的
+                        container.style.transformOrigin = 'left top'; // 設定縮放中心為左上角
+                        zoomRange.style.display = 'inline-block';
+                    });
+
+
+
+
+                    zoomRange.addEventListener('input', (e) => {
+                        const scale = e.target.value;
+                        container.style.transform = `scale(${scale})`;
+                    });
+
+                    // const canvas = document.createElement('canvas');
+
+                    // canvas.width = width;
+                    // canvas.height = height;
+                    // canvas.id = `canvas-${canvasCounter}`;
+                    //增加canvas計數器
+                    canvasCounter++;
+                    //新增canvas容器
+                    const container = document.createElement('div');
+                    container.style.position = "relative";
+                    container.style.display = "inline-block";
+                    container.className = 'subcontainer';
+                    container.style.transformOrigin = 'left top'; // 設定縮放中心為左上角
+                    // 預設顯示第一張圖
+                    if (i !== 0) {
+                        container.style.display = 'none';
+                    }
+                    //container.appendChild(canvas); //
+                    canvasLinkContainer.appendChild(zoomDiv); //加入縮放畫布input
+                    container.appendChild(backgroundCanvas); //加入底圖canvas
+                    container.appendChild(brushCanvas); //加入筆刷canvas
+                    canvasDrawContainer.appendChild(container); //加入主canvas容器
+
+                    // 新增筆刷預覽
+                    const brushPreview = document.createElement('div');
+                    brushPreview.style.width = '10px';
+                    brushPreview.style.height = '10px';
+                    brushPreview.style.borderRadius = '50%';
+                    brushPreview.style.backgroundColor = 'black';
+                    brushPreview.style.position = 'absolute';
+                    brushPreview.style.zIndex = '1000';
+                    brushPreview.style.pointerEvents = 'none';
+                    container.appendChild(brushPreview);
+
+                    //
+                    const backgroundCtx = backgroundCanvas.getContext('2d');
+                    const brushCtx = brushCanvas.getContext('2d');
+
+
+
+                    backgroundCtx.drawImage(img, 0, 0, width, height);
+                    brushCanvas.style.zIndex = '2'; //筆刷canvas在上層
+
+                    //進入筆刷canvas時顯示筆刷預覽
+                    brushCanvas.addEventListener('mouseenter', (e) => {
+                        const brushSize = document.getElementById('brush-size').value;
+                        const brushStyle = document.getElementById('brush-style').value;
+                        const color = document.getElementById('color-picker').value;
+                        
+                        brushPreview.style.width = `${brushSize}px`;
+                        brushPreview.style.height = `${brushSize}px`;
+                        brushPreview.style.backgroundColor = color;
+
+                        if (brushStyle === 'round') {
+                            brushPreview.style.borderRadius = '50%';
+                        } else if (brushStyle === 'square') {
+                            brushPreview.style.borderRadius = '0';
+                        } else if (brushStyle === 'butt') {
+                            brushPreview.style.borderRadius = '0';
+                        }else if (brushStyle==='ellipse'){
+                            brushPreview.style.borderRadius = '50% / 50%';
+                        }
+                    });
+
+                    let lastX;
+                    let lastY;
+
+                    // 當滑鼠按下時，開始繪製
+                    brushCanvas.addEventListener('mousedown', (e) => {
+
+                        const rect = brushCanvas.getBoundingClientRect();
+                        //const mouseX = e.clientX - rect.left;
+                        //const mouseY = e.clientY - rect.top;
+                        const scale = zoomRange.value; // 获取当前缩放比例
+                        const mouseX = (e.clientX - rect.left) / scale; // 修復滑鼠位置適應scale
+                        const mouseY = (e.clientY - rect.top) / scale; // 修復滑鼠位置適應scale
+                        brushCtx.beginPath();
+                        brushCtx.moveTo(mouseX, mouseY);
+                        isDrawing = true;
+
+                        const brushSize = document.getElementById('brush-size').value;
+                        const brushStyle = document.getElementById('brush-style').value;
+
+                        if (isDrawing) {
+                            //繪製橢圓筆刷
+                            if (brushStyle === 'ellipse') {
+                                 // 繪製橢圓筆刷
+                                 const centerX = (lastX + mouseX) / 2;
+                                const centerY = (lastY + mouseY) / 2;
+                                const rx = Math.abs(lastX - mouseX) / 2;
+                                const ry = Math.abs(lastY - mouseY) / 2;
+
+                                brushCtx.save();
+                                brushCtx.beginPath();
+                                brushCtx.translate(centerX, centerY);
+                                //brushCtx.ellipse(0, 0, brushSize / 2, brushSize / 2, 0, 0, 2 * Math.PI);
+                                brushCtx.ellipse(brushSize / 2, brushSize / 4, brushSize / 4, brushSize / 4, 0, 0, 2 * Math.PI);
+                                brushCtx.restore();
+
+                                brushCtx.fillStyle = document.getElementById('color-picker').value;
+                                brushCtx.fill();
+                            } else {
+                                brushCtx.beginPath();
+                                brushCtx.moveTo(lastX, lastY);
+                                brushCtx.lineTo(mouseX, mouseY);
+                                brushCtx.strokeStyle = document.getElementById('color-picker').value;
+                                brushCtx.lineWidth = brushSize;
+
+                                // 設置筆刷樣式
+                                if (brushStyle === 'round') {
+                                    brushCtx.lineCap = 'round';
+                                    brushCtx.lineJoin = 'round';
+                                } else if (brushStyle === 'square') {
+                                    brushCtx.lineCap = 'square';
+                                    brushCtx.lineJoin = 'miter';
+                                } else if (brushStyle === 'butt') {
+                                    brushCtx.lineCap = 'butt';
+                                    brushCtx.lineJoin = 'miter';
+                                }
+
+                                brushCtx.stroke();
+                            }
+
+                        }
+                        lastX = (e.clientX - rect.left) / zoomRange.value;
+                        lastY = (e.clientY - rect.top) / zoomRange.value;
+
+                    });
+
+                    //滑鼠移動時，繪製筆刷
+                    brushCanvas.addEventListener('mousemove', (e) => {
+
+                        const rect = brushCanvas.getBoundingClientRect();
+                        //const mouseX = e.clientX - rect.left;
+                        // const mouseY = e.clientY - rect.top;
+
+                        const scale = zoomRange.value; // 获取当前缩放比例
+                        const mouseX = (e.clientX - rect.left) / scale; // 修復滑鼠位置適應scale
+                        const mouseY = (e.clientY - rect.top) / scale; // 修復滑鼠位置適應scale
+                        const brushSize = document.getElementById('brush-size').value;
+                        const brushStyle = document.getElementById('brush-style').value;
+
+                        // 更新筆刷預覽位置
+                        // 獲取canvas的邊界框
+                        const canvasRect = brushCanvas.getBoundingClientRect();
+                        // 使用canvas的邊界框作為筆刷預覽元素的位置參考(確保預覽筆刷在滑鼠中心位置)
+                        brushPreview.style.left = `${mouseX - brushSize / 2}px`;
+                        brushPreview.style.top = `${mouseY - brushSize / 2}px`;
+
+
+                        if (isDrawing) {
+                            if (brushStyle === 'ellipse') {
+                                // 繪製橢圓筆刷
+                                const centerX = (lastX + mouseX) / 2;
+                                const centerY = (lastY + mouseY) / 2;
+                                const rx = Math.abs(lastX - mouseX) / 2;
+                                const ry = Math.abs(lastY - mouseY) / 2;
+
+                                brushCtx.save();
+                                brushCtx.beginPath();
+                                brushCtx.translate(centerX, centerY);
+                                //brushCtx.ellipse(0, 0, brushSize / 2, brushSize / 2, 0, 0, 2 * Math.PI);
+                                brushCtx.ellipse(brushSize / 2, brushSize / 4, brushSize / 4, brushSize / 4, 0, 0, 2 * Math.PI);
+                                brushCtx.restore();
+
+                                brushCtx.fillStyle = document.getElementById('color-picker').value;
+                                brushCtx.fill();
+                            } else {
+                                brushCtx.beginPath();
+                                brushCtx.moveTo(lastX, lastY);
+                                brushCtx.lineTo(mouseX, mouseY);
+                                brushCtx.strokeStyle = document.getElementById('color-picker').value;
+                                brushCtx.lineWidth = brushSize;
+
+                                // 設置筆刷樣式
+                                if (brushStyle === 'round') {
+                                    brushCtx.lineCap = 'round';
+                                    brushCtx.lineJoin = 'round';
+                                } else if (brushStyle === 'square') {
+                                    brushCtx.lineCap = 'square';
+                                    brushCtx.lineJoin = 'miter';
+                                } else if (brushStyle === 'butt') {
+                                    brushCtx.lineCap = 'butt';
+                                    brushCtx.lineJoin = 'miter';
+                                }
+
+                                brushCtx.stroke();
+                            }
+
+                        }
+                        // 更新上一個滑鼠位置
+                        //lastX = mouseX;
+                        //lastY = mouseY;
+                        lastX = (e.clientX - rect.left) / zoomRange.value;
+                        lastY = (e.clientY - rect.top) / zoomRange.value;
+
+
+                    });
+                    // 當滑鼠放開時，停止繪製
+                    brushCanvas.addEventListener('mouseup', () => {
+                        isDrawing = false;
+                    });
+                    // 當滑鼠離開canvas時，停止繪製
+                    brushCanvas.addEventListener('mouseleave', () => {
+                        isDrawing = false;
+                    });
+                    // 當滑鼠按下時，開始繪製
+                    brushCanvas.addEventListener('mousedown', (e) => {
+                        const rect = brushCanvas.getBoundingClientRect();
+                        const scale = zoomRange.value; // 获取当前缩放比例
+                        const mouseX = (e.clientX - rect.left) / scale; // 修復滑鼠位置適應scale
+                        const mouseY = (e.clientY - rect.top) / scale; // 修復滑鼠位置適應scale
+                        lastX = (e.clientX - rect.left) / zoomRange.value;
+                        lastY = (e.clientY - rect.top) / zoomRange.value;
+                        isDrawing = true;
+                    });
+
+                    // 添加橡皮擦功能
+                    const eraserButton = document.getElementById('eraser');
+                    eraserButton.addEventListener('click', () => {
+                        brushCtx.save(); // 使用save()方法保存畫布狀態
+                        brushCtx.globalCompositeOperation = 'destination-out'; // 將畫布模式設置為橡皮擦模式
+                    });
+                    // 筆刷模式
+                    const brushButton = document.getElementById('brush');
+                    brushButton.addEventListener('click', () => {
+                        // 使用restore()方法恢復畫布狀態
+                        brushCtx.restore();
+                        // 將畫布模式設置為筆刷模式
+                        brushCtx.globalCompositeOperation = 'source-over';
+                    });
+
+
+
+                    // 添加重置畫布為原圖功能
+                    const resetButton = document.getElementById('reset');
+                    resetButton.addEventListener('click', () => {
+                        // 清空畫布
+                        brushCtx.clearRect(0, 0, brushCanvas.width, brushCanvas.height);
+                        // 使用drawImage()方法重新繪製原始圖像
+                        backgroundCtx.drawImage(imageObj, 0, 0, backgroundCanvas.width, backgroundCanvas.height);
+                    });
+                    container.appendChild(backgroundCanvas);
+                    container.appendChild(brushCanvas);
+
+                    //container.appendChild(canvas);
+
+
+                }
+            });
+            reader.readAsDataURL(file);
+        }
+    });
+
+    document.getElementById('color-picker').addEventListener('change', () => {
+        const canvases = document.getElementsByTagName('canvas');
+        for (let i = 0; i < canvases.length; i++) {
+            const ctx = canvases[i].getContext('2d');
+            ctx.strokeStyle = document.getElementById('color-picker').value;
+        }
+    });
+
+    document.getElementById('brush-size').addEventListener('input', () => {
+        const canvases = document.getElementsByTagName('canvas');
+        for (let i = 0; i < canvases.length; i++) {
+            const ctx = canvases[i].getContext('2d');
+            ctx.lineWidth = document.getElementById('brush-size').value;
+        }
+    });
+
+    // 加載圖片
+    function loadImage(src) {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+    }
+
+    /*
+        按下下載按鈕
+        將所有canvas中的筆刷部分繪製到一個新的canvas中
+    */
+    downloadButton.addEventListener('click', () => {
+        const canvases = document.getElementsByTagName('canvas');
+        const zip = new JSZip();
+
+        for (let i = 0; i < canvases.length; i += 2) {
+            const backgroundCanvas = canvases[i];
+            const brushCanvas = canvases[i + 1];
+            const width = backgroundCanvas.width;
+            const height = backgroundCanvas.height;
+
+            // 創建一個新的canvas來合併底圖和筆刷
+            const mergedCanvas = document.createElement('canvas');
+            mergedCanvas.width = width;
+            mergedCanvas.height = height;
+            const mergedCtx = mergedCanvas.getContext('2d');
+            mergedCtx.drawImage(backgroundCanvas, 0, 0, width, height);
+            mergedCtx.drawImage(brushCanvas, 0, 0, width, height);
+
+            const filename = backgroundCanvas.dataset.filename; // 根據選擇圖片的原檔名命名圖片
+            console.log(filename);
+
+            zip.file(filename, mergedCanvas.toDataURL('image/png').replace(/^.*,/, ''), {
+                base64: true
+            });
+        }
+        zip.generateAsync({
+            type: 'blob'
+        }).then(function(content) {
+            // 下載壓縮檔
+            saveAs(content, 'drawings.zip');
+        });
+    });
+
+
+    // // 建立 generateZipFile 函式
+    // function generateZipFileOutput() {
+    //     const zip = new JSZip();
+    //     const canvases = document.getElementsByTagName('canvas');
+    //     for (let i = 0; i < canvases.length; i++) {
+    //         const canvas = canvases[i];
+    //         const filename = fileInput.files[i].name; // 根據選擇圖片的原檔名命名圖片
+    //         zip.file(filename, canvas.toDataURL('image/png').replace(/^.*,/, ''), {
+    //             base64: true
+    //         });
+    //     }
+
+    //     zip.generateAsync({
+    //         type: 'blob'
+    //     }).then(function(content) {
+    //         // 下載壓縮檔
+    //         saveAs(content, 'drawings.zip');
+    //     });
+    // }
+    // const saveButton = document.getElementById('save-button');
+    // saveButton.addEventListener('click', generateZipFileOutput);
+
+    /**
+     * 將畫布內容轉換為壓縮檔
+     * @param {HTMLCanvasElement} canvas - 要轉換的畫布
+     * @param {string} fileName - 轉換後的檔案名稱
+     * @returns {Blob} 包含壓縮檔的Blob物件
+     */
+    async function generateZipFile(canvas, fileName) {
+        // 建立一個 JSZip 實例
+        const zip = new JSZip();
+
+        // 將畫布內容轉換為 base64 編碼的圖片資料
+        const imgData = canvas.toDataURL('image/png').replace(/^data:image\/(png|jpg);base64,/, '');
+
+        // 將圖片資料加入壓縮檔案中，並使用原始檔名命名壓縮檔
+        zip.file(fileName, imgData, {
+            base64: true
+        });
+
+        // 生成壓縮檔，並將其轉換為 Blob 物件
+        return await zip.generateAsync({
+            type: 'blob'
+        });
+    }
+</script>
+
+</html>

@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <title>批量Txt修改 - By Aidec</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.6.0/jszip.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    #file-input,
+    #img-input {
+      margin-right: 10px;
+    }
+
+    #save-img-checkbox {
+      margin-right: 5px;
+    }
+
+    label {
+      margin-right: 5px;
+    }
+
+    #search-input,
+    #replace-input,
+    #insert-input {
+      width: 200px;
+    }
+
+    #replace-btn,
+    #insert-btn,
+    #save-btn {
+      margin-left: 10px;
+    }
+
+    #editors {
+      display: flex;
+      flex-wrap: wrap;
+    }
+
+    body {
+      font-family: 'Helvetica Neue', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #fff;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+
+
+    form {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="radio"] {
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      margin-right: 10px;
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    input[type="radio"] {
+      margin-right: 5px;
+    }
+
+    label {
+      font-size: 16px;
+      margin-right: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #4CAF50;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background-color: #3e8e41;
+    }
+
+    #editors {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-top: 20px;
+    }
+
+    .editor {
+      width: 48%;
+      margin-bottom: 20px;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.1);
+      border-radius: 5px;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .editor img {
+      max-width: 100%;
+      height: auto;
+      margin-bottom: 10px;
+    }
+
+    .editor .actions {
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    .editor .actions button {
+      margin-left: 10px;
+    }
+
+
+
+
+    #editors img {
+      max-width: 100%;
+      height: auto;
+    }
+
+    .editors>div {
+      min-height: 100px;
+      border: 1px solid #aaa;
+      border-radius: 10px;
+      padding: 8px;
+      margin-bottom: 10px;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+
+    h1 {
+      text-align: center;
+      margin: 20px 0;
+    }
+
+    input[type="file"] {
+      margin: 10px;
+    }
+
+    #save-img-checkbox {
+      margin-right: 10px;
+    }
+
+    label {
+      display: inline-block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+
+    #search-input,
+    #replace-input,
+    #insert-input {
+      margin-right: 10px;
+    }
+
+
+
+    .file-div {
+      margin: 10px;
+      border: 1px solid black;
+      padding: 10px;
+      width: 100%;
+    }
+
+    .editor {
+      border: 1px solid #ccc;
+      min-height: 100px;
+      padding: 10px;
+    }
+
+    .preview-image {
+      max-width: 128px;
+      margin-top: 10px;
+    }
+
+    button {
+      margin-top: 10px;
+      padding: 5px 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #3e8e41;
+    }
+
+    mark {
+      background-color: yellow;
+    }
+
+    .error-message {
+      margin-top: 20px;
+      color: red;
+      display: none;
+    }
+
+    .file-div {
+      display: flex;
+      flex-wrap: wrap;
+      margin: 20px;
+      border: 1px solid black;
+      padding: 10px;
+    }
+
+    .editor {
+      order: 2;
+      flex-grow: 1;
+      border: 1px solid #ccc;
+      min-height: 100px;
+      padding: 10px;
+      margin: 3px;
+    }
+    .file-div > div.editor{
+      min-height: 150px;
+    }
+
+    .preview-image {
+      order: 1;
+      max-width: 100%;
+      margin-top: 10px;
+    }
+    .preview-image {
+      max-width: 128px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      margin-top: 10px;
+      padding: 5px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Text Editor</h1>
+    <form>
+      <div>
+        <label for="file-input">Txt檔案:</label>
+        <input type="file" id="file-input" multiple accept=".txt">
+      </div>
+      <div>
+        <label for="img-input">對應圖片檔:</label>
+        <input type="file" id="img-input" multiple accept=".jpg, .jpeg, .png">
+      </div>
+      <div>
+        <input type="checkbox" id="save-img-checkbox">
+        <label for="save-img-checkbox">匯出時保存圖片</label>
+      </div>
+    </form>
+    <div>
+      <label for="search-input">搜尋詞:</label>
+      <input type="text" id="search-input">
+      <label for="replace-input">替換詞:</label>
+      <input type="text" id="replace-input">
+      <button id="replace-btn">替換</button>
+    </div>
+    <div>
+      <label for="insert-input">插入字串:</label>
+      <input type="text" id="insert-input">
+      <input type="radio" id="before-radio" name="insert-radio" value="before" checked>
+      <label for="before-radio">在開頭</label>
+      <input type="radio" id="after-radio" name="insert-radio" value="after">
+      <label for="after-radio">在結尾</label>
+      <button id="insert-btn">插入</button>
+    </div>
+    <button id="save-btn">匯出保存</button>
+    <div id="error-message"></div>
+    <div id="editors"></div>
+
+    
+  </div>
+</body>
+<script>
+  const fileInput = document.getElementById('file-input');
+  const imgInput = document.getElementById('img-input');
+  const editorsDiv = document.getElementById('editors');
+  const searchInput = document.getElementById('search-input');
+  const replaceInput = document.getElementById('replace-input');
+  const replaceBtn = document.getElementById('replace-btn');
+  const insertInput = document.getElementById('insert-input');
+  const beforeRadio = document.getElementById('before-radio');
+  const afterRadio = document.getElementById('after-radio');
+  const insertBtn = document.getElementById('insert-btn');
+  const saveBtn = document.getElementById('save-btn');
+  const errorMessageDiv = document.getElementById('error-message');
+  const saveImgCheckbox = document.getElementById('save-img-checkbox');
+  const zip = new JSZip();
+
+  let selectedFiles = [];
+  let selectedImages = [];
+  // 監聽當使用者選擇檔案後觸發的事件
+fileInput.addEventListener('change', () => {
+  selectedFiles = Array.from(fileInput.files).filter(file => file.type === 'text/plain');
+  selectedImages = Array.from(imgInput.files).filter(file => file.type.startsWith('image/'));
+
+  // 檢查是否有符合類型的檔案，若無則顯示提示
+  if (selectedFiles.length === 0) {
+    alert('Please select one or more txt files!');
+    return;
+  }
+
+  editorsDiv.innerHTML = '';
+
+  // 動態產生每個檔案的編輯區和預覽圖片
+  selectedFiles.forEach(file => {
+    const fileDiv = document.createElement('div');
+    fileDiv.classList.add('file-div');
+
+    const editorDiv = document.createElement('div');
+    editorDiv.id = file.name;
+    editorDiv.contentEditable = true;
+    editorDiv.classList.add('editor');
+    editorDiv.innerHTML = '';
+    fileDiv.appendChild(editorDiv); 
+    readFile(file, editorDiv);
+
+    const image = selectedImages.find(image => image.name === file.name.replace('.txt', '.PNG') || image.name === file.name.replace('.txt', '.jpg') || image.name === file.name.replace('.txt', '.jpeg') || image.name === file.name.replace('.txt', '.png'));
+
+    if (image) {
+      const imageSrc = URL.createObjectURL(image);
+      const imageDiv = document.createElement('div');
+      imageDiv.classList.add('preview-image');
+      const img = document.createElement('img');
+      img.src = imageSrc;
+      img.alt = 'Preview';
+      imageDiv.appendChild(img);
+      fileDiv.appendChild(imageDiv);
+    }
+
+    editorsDiv.appendChild(fileDiv);
+  });
+});
+
+// 監聽當使用者選擇圖片後觸發的事件
+imgInput.addEventListener('change', () => {
+  // 只有在至少有一個 txt 檔案被選取的情況下才處理圖片
+  if (selectedFiles.length === 0) {
+    alert('Please select a txt file first!');
+    return;
+  }
+
+  // 篩選出符合類型的檔案
+  selectedImages = Array.from(imgInput.files).filter(file => file.type.startsWith('image/'));
+  console.log(selectedImages)
+  // 遍歷每個檔案，找到對應的圖片，並在對應的 div 旁邊加入預覽圖片
+  selectedFiles.forEach(file => {
+    const fileDiv = document.querySelector(`#${CSS.escape(file.name)}`).parentElement;
+
+    const image = selectedImages.find(image => image.name === file.name.replace('.txt', '.PNG') || image.name === file.name.replace('.txt', '.jpg') || image.name === file.name.replace('.txt', '.jpeg') || image.name === file.name.replace('.txt', '.png'));
+
+    if (image) {
+      const imageSrc = URL.createObjectURL(image);
+      const imageDiv = document.createElement('div');
+      imageDiv.classList.add('preview-image');
+      const img = document.createElement('img');
+      img.src = imageSrc;
+      img.alt = 'Preview';
+      imageDiv.appendChild(img);
+      fileDiv.appendChild(imageDiv);
+    }
+  });
+});  
+
+  // 監聽當使用者未選擇檔案時觸發的事件
+  fileInput.addEventListener('click', (event) => {
+    // 防止冒泡事件導致觸發imgInput的click事件
+    event.stopPropagation();
+  });
+
+  imgInput.addEventListener('click', (event) => {
+    // 防止冒泡事件導致觸發fileInput的click事件
+    event.stopPropagation();
+  });
+
+  document.addEventListener('click', () => {
+    // 隱藏錯誤訊息
+    errorMessageDiv.style.display = 'none';
+  });
+
+  // 監聽當使用者未選擇檔案時觸發的事件
+  fileInput.addEventListener('click', (event) => {
+    // 防止冒泡事件導致觸發imgInput的click事件
+    event.stopPropagation();
+  });
+
+
+
+
+  // 讀取檔案內容
+  function readFile(file, editorDiv) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      editorDiv.innerHTML = event.target.result;
+    };
+    reader.readAsText(file);
+  }
+
+  // 監聽當使用者編輯內容後觸發的事件
+  editorsDiv.addEventListener('input', () => {
+    console.log('Content changed!');
+  });
+
+  // 監聽當使用者按下替換按鈕後觸發的事件
+  replaceBtn.addEventListener('click', () => {
+    const searchText = searchInput.value;
+    const replaceText = replaceInput.value;
+
+    // 尋找符合查詢詞的文字，並進行替換
+    selectedFiles.forEach(file => {
+      const editorDiv = document.getElementById(file.name);
+      const content = editorDiv.innerHTML;
+      const updatedContent = content.replaceAll(searchText, replaceText);
+      editorDiv.innerHTML = updatedContent;
+    });
+  });
+
+  // 監聽當使用者按下插入按鈕後觸發的事件
+  insertBtn.addEventListener('click', () => {
+    const insertText = insertInput.value;
+    const position = beforeRadio.checked ? 'afterbegin' : 'beforeend';
+
+    // 在每個編輯區的開頭或結尾插入文字
+    selectedFiles.forEach(file => {
+      const editorDiv = document.getElementById(file.name);
+      editorDiv.insertAdjacentHTML(position, insertText);
+    });
+  });
+
+
+// 監聽當使用者按下儲存按鈕後觸發的事件
+saveBtn.addEventListener('click', () => {
+  const updatedFiles= selectedFiles.map(file => {
+    const editorDiv = document.getElementById(file.name);
+    const updatedFile = new File([editorDiv.innerHTML], file.name, { type: file.type });
+    return updatedFile;
+  });
+  
+  // 將更新後的檔案加入壓縮檔
+  updatedFiles.forEach(file => {
+    zip.file(file.name, file);
+  });
+
+  // 檢查是否勾選保存圖片，若有則將選擇的圖片檔案加入壓縮檔
+  if (saveImgCheckbox.checked) {
+    selectedImages.forEach(image => {
+      zip.file(image.name, image);
+    });
+  }
+
+  // 產生壓縮檔案並下載
+  zip.generateAsync({ type: "blob" })
+    .then(function (blob) {
+      saveAs(blob, "updated_files.zip");
+    });
+});
+  
+</script>
+
+</html>
